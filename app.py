@@ -3,6 +3,10 @@ import pandas as pd
 import bs4 as bs
 from urllib.request import Request, urlopen
 import ssl
+import json
+import ssl
+import re
+import requests
 
 app = Flask(__name__)
 
@@ -27,7 +31,7 @@ def index():
     
     # Extract structured data
     df['Rank'] = range(len(df))
-    df['Ticker'] = df['Raw'].apply(lambda x: x.split(" ", 1)[0].strip())
+    df['Ticker'] = df['Raw'].apply(lambda x: x.split(" ", 1)[0].strip()).replace(".","-")
     df['Company Name'] = df['Raw'].apply(lambda x: x.split(" ", 1)[1].split("(", 1)[0].strip())
     df['Sector'] = df['Raw'].apply(lambda x: x.split("(", 1)[1].split(")", 1)[0].strip())
     df['Superinvestor Ownership'] = df['Raw'].apply(
@@ -39,6 +43,54 @@ def index():
     )
 
     df = df.drop(['Type', 'Raw'], axis=1)
+
+    # Add Yahoo Finance data
+    df['Current Price'] = None
+    df['52 Week Range'] = None
+    df['52 Week Low'] = None
+    df['52 Week High'] = None
+
+    for index, row in df.iterrows():
+        ticker = row['Ticker']
+        try:
+            url = f"https://finance.yahoo.com/quote/{ticker}"
+            headers = {
+                "User-Agent": "Mozilla/5.0"
+            }
+            
+            response = requests.get(url, headers=headers)
+            soup = bs.BeautifulSoup(response.text, "html.parser")
+
+            tbl =soup.find("div",{"data-testid":"quote-statistics"})
+
+            fifty_two_week_range = tbl.find("fin-streamer", {"data-field": "fiftyTwoWeekRange"})
+
+            if fifty_two_week_range:
+                df.at[index, '52 Week Range'] = fifty_two_week_range.text.strip()
+            else:
+                df.at[index, '52 Week Range'] = None
+            
+            #####
+
+            tbl =str(soup.find("span",{"data-testid":"qsp-price"}))
+
+            current_price = tbl.split(">",1)[1].replace(" </span>","").strip()
+
+            if current_price:
+                df.at[index, 'Current Price'] = current_price.strip()
+            else:
+                df.at[index, 'Current Price'] = None
+
+            df.at[index, '52 Week Low'] = round((((float(current_price.replace(",","").strip()) / float(fifty_two_week_range.text.split("-")[0].replace(",","").strip()))-1)*100),2)
+
+            df.at[index, '52 Week High'] = round((((float(current_price.replace(",","").strip()) / float(fifty_two_week_range.text.split("-")[1].replace(",","").strip()))-1)*100),2)
+
+        except Exception as e:
+            df.at[index, 'Current Price'] = "Error"
+            df.at[index, '52 Week Range'] = "Error"
+            df.at[index, '52 Week Low'] = "Error"
+            df.at[index, '52 Week High'] = "Error"
+            
 
     # Render to template
     return render_template("index.html", table=df.to_html(classes="table table-striped", index=False, border=0, escape=False))
