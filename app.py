@@ -38,20 +38,20 @@ def index():
         lambda x: x.split("Superinvestor Ownership : ", 1)[1].split(" ", 1)[0].strip()
         if "Superinvestor Ownership :" in x else "0"
     )
-    df['Hold Price'] = df['Raw'].apply(
+    df['Hold Price($)'] = df['Raw'].apply(
         lambda x: x.split("Hold Price:")[1].strip() if "Hold Price:" in x else "$0"
     )
 
     df = df.drop(['Type', 'Raw'], axis=1)
 
-    df = df[df['Rank'] < 30]
+    df = df[df['Rank'] < 300]
 
     # Add Yahoo Finance data
-    df['Current Price'] = None
-    df['Gains & Losses'] = None
+    df['Current Price($)'] = None
+    df['Gains & Losses(%)'] = None
     df['52 Week Range'] = None
-    df['52 Week Low'] = None
-    df['52 Week High'] = None
+    df['52 Week Low(%)'] = None
+    df['52 Week High(%)'] = None
 
     for index, row in df.iterrows():
         ticker = row['Ticker']
@@ -82,25 +82,25 @@ def index():
             current_price = tbl.split(">",1)[1].replace(" </span>","").strip()
 
             if current_price:
-                df.at[index, 'Current Price'] = current_price.strip()
+                df.at[index, 'Current Price($)'] = current_price.strip()
             else:
-                df.at[index, 'Current Price'] = None
+                df.at[index, 'Current Price($)'] = None
 
-            df.at[index, '52 Week Low'] = round((((float(current_price.replace(",","").strip()) / float(fifty_two_week_range.text.split("-")[0].replace(",","").strip()))-1)*100),2)
+            df.at[index, '52 Week Low(%)'] = round((((float(current_price.replace(",","").strip()) / float(fifty_two_week_range.text.split("-")[0].replace(",","").strip()))-1)*100),2)
 
-            df.at[index, '52 Week High'] = round((((float(current_price.replace(",","").strip()) / float(fifty_two_week_range.text.split("-")[1].replace(",","").strip()))-1)*100),2)
+            df.at[index, '52 Week High(%)'] = round((((float(current_price.replace(",","").strip()) / float(fifty_two_week_range.text.split("-")[1].replace(",","").strip()))-1)*100),2)
 
         except Exception as e:
-            df.at[index, 'Current Price'] = None
-            df.at[index, 'Gains & Losses'] = None
+            df.at[index, 'Current Price($)'] = None
+            df.at[index, 'Gains & Losses(%)'] = None
             df.at[index, '52 Week Range'] = None
-            df.at[index, '52 Week Low'] = None
-            df.at[index, '52 Week High'] = None
+            df.at[index, '52 Week Low(%)'] = None
+            df.at[index, '52 Week High(%)'] = None
             
-    df['Current Price'] = df['Current Price'].astype(float)
-    df['Hold Price'] = df['Hold Price'].str.replace("$", "", regex=False).astype(float)
+    df['Current Price($)'] = df['Current Price($)'].astype(float)
+    df['Hold Price($)'] = df['Hold Price($)'].str.replace("$", "", regex=False).astype(float)
 
-    df['Gains & Losses'] = round((df['Current Price'] / df['Hold Price']),2)
+    df['Gains & Losses(%)'] = round(((df['Current Price($)'] / df['Hold Price($)'])-1)*100,2)
 
     # Render to template
     return render_template("index.html", table=df.to_html(classes="table table-striped", index=False, border=0, escape=False))
