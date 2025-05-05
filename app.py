@@ -98,6 +98,7 @@ def index():
             df.at[index, '52 Week High(%)'] = None
             
     df['Current Price($)'] = df['Current Price($)'].astype(float)
+    df['Hold Price($)'] = df['Hold Price($)'].str.replace(",", "", regex=False)
     df['Hold Price($)'] = df['Hold Price($)'].str.replace("$", "", regex=False).astype(float)
 
     df['Gains & Losses(%)'] = round(((df['Current Price($)'] / df['Hold Price($)'])-1)*100,2)
