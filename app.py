@@ -97,7 +97,7 @@ def index():
             df.at[index, '52 Week Low(%)'] = None
             df.at[index, '52 Week High(%)'] = None
             
-    df['Current Price($)'] = df['Current Price($)'].astype(float)
+    df['Current Price($)'] = df['Current Price($)'].str.replace(",","").astype(float)
     df['Hold Price($)'] = df['Hold Price($)'].str.replace(",", "", regex=False)
     df['Hold Price($)'] = df['Hold Price($)'].str.replace("$", "", regex=False).astype(float)
 
